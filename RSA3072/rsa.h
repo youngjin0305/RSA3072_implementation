@@ -1,6 +1,4 @@
 #pragma once
-#ifndef RSA_H
-#define RSA_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -142,5 +140,3 @@ void rsa_decrypt(Bignum* message, const Bignum* ciphertext, const RSA_PrivateKey
 * 파라미터는 테스트 벡터가 어떻게 있는지를 확인을 안해보고 만든거라 그냥 원하는대로 수정해서 사용해주세요
 */
 int check_test_vector(const char* file_name);
-
-#endif // RSA_H
