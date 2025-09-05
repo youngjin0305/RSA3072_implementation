@@ -94,7 +94,7 @@ int is_probably_prime(const Bignum* n, int k);
 /**
  * 지정된 비트 길이의 소수를 생성하는 함수
  * prime: 생성된 소수를 저장할 Bignum 포인터
- * bits: 원하는 소수의 비트 길이 (e.g., 1536)
+ * bits: 원하는 소수의 비트 길이 (지금 과제는 3072)
  */
 void generate_prime(Bignum* prime, int bits);
 
@@ -138,7 +138,7 @@ void rsa_decrypt(Bignum* message, const Bignum* ciphertext, const RSA_PrivateKey
 * 테스트 벡터 검증
 * 일단 int로 선언 했는데 원하는 방식 있으시면 바꾸셔도 됩니다.
 * int로 한건 return으로 success flag를 반환해서 모든 테스트 벡터를 통과했는지 확인하는 용도를 생각했어요
-* 필요하면 제가 AES할 때 만들었던 코드 보여드릴게요]
+* 필요하면 제가 AES할 때 만들었던 코드 보여드릴게요
 * 파라미터는 테스트 벡터가 어떻게 있는지를 확인을 안해보고 만든거라 그냥 원하는대로 수정해서 사용해주세요
 */
 int check_test_vector(const char* file_name);
