@@ -29,6 +29,12 @@ typedef struct {
 typedef struct {
     Bignum n; // Modulus
     Bignum d; // Private Exponent
+    // CRT를 위해 필요한 값
+    Bignum p;
+    Bignum q;
+    Bignum dP; // d mod (p-1)
+    Bignum dQ; // d mod (p-1)
+    Bignum qInv; // q^(-1) mod p
 } RSA_PrivateKey; // 개인키
 
 
