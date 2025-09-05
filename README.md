@@ -10,6 +10,14 @@
 * 암호화 및 복호화 구현: 김영진
 * 테스트 백터 검증: 김강민
 
+## 디버깅용 출력
+```
+#ifdef _DEBUG
+  printf("디버깅용 출력");
+#endif
+```
+visual studio에서 f5를 누르면 이 안에 있는 코드가 실행됩니다.
+
 ## 코드 받는 법
 일단 git 설치하기 -> https://git-scm.com/downloads
 ### visual studio를 사용하는 경우
