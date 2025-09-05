@@ -1,6 +1,6 @@
 #pragma once
-#ifndef RSA_FRAMEWORK_H
-#define RSA_FRAMEWORK_H
+#ifndef RSA_H
+#define RSA_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,7 +59,7 @@ void bignum_mod_exp(Bignum* result, const Bignum* base, const Bignum* exp, const
 
 
 // =============================================================================
-// ## 2. 안전한 난수 생성기 (담당: ) 파일: random.c
+// ## 2. 안전한 난수 생성기 (담당: 정태진) 파일: random.c
 // =============================================================================
 
 /**
@@ -82,7 +82,7 @@ int generate_secure_random(unsigned char* buffer, size_t size);
 int is_probably_prime(const Bignum* n, int k);
 
 // =============================================================================
-// ## 4. 소수 생성 모듈 (담당: ) 파일: prime.c
+// ## 4. 소수 생성 모듈 (담당: 이나원) 파일: prime.c
 // =============================================================================
 
 /**
@@ -105,7 +105,7 @@ void generate_prime(Bignum* prime, int bits);
 void rsa_generate_keys(RSA_PublicKey* pub_key, RSA_PrivateKey* priv_key, const Bignum* p, const Bignum* q);
 
 // =============================================================================
-// ## 6. 암호화 및 복호화 (담당: ) 파일: rsa.c
+// ## 6. 암호화 및 복호화 (담당: 김영진) 파일: rsa.c
 // =============================================================================
 
 /**
@@ -128,5 +128,13 @@ void rsa_decrypt(Bignum* message, const Bignum* ciphertext, const RSA_PrivateKey
 // ## 7. 테스트 벡터 (담당: 김강민) 파일: main.c
 // =============================================================================
 
+/*
+* 테스트 벡터 검증
+* 일단 int로 선언 했는데 원하는 방식 있으시면 바꾸셔도 됩니다.
+* int로 한건 return으로 success flag를 반환해서 모든 테스트 벡터를 통과했는지 확인하는 용도를 생각했어요
+* 필요하면 제가 AES할 때 만들었던 코드 보여드릴게요]
+* 파라미터는 테스트 벡터가 어떻게 있는지를 확인을 안해보고 만든거라 그냥 원하는대로 수정해서 사용해주세요
+*/
+int check_test_vector(const char* file_name);
 
-#endif // RSA_FRAMEWORK_H
+#endif // RSA_H
