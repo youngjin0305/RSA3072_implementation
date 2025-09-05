@@ -1,11 +1,11 @@
 #include "rsa.h"
 
-// RSA 암호화
+// RSA Ecryption
 void rsa_encrypt(Bignum* ciphertext, const Bignum* message, const RSA_PublicKey* pub_key) {
 	bignum_mod_exp(ciphertext, message, &pub_key->e, &pub_key->n);
 }
 
-// RSA 복호화
+// RSA Decryption
 void rsa_decrypt(Bignum* message, const Bignum* ciphertext, const RSA_PrivateKey* priv_key) {
 	Bignum m_p, m_q, h;
 
