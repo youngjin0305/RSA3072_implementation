@@ -21,7 +21,7 @@ visual studio에서 f5를 누르면 이 안에 있는 코드가 실행됩니다.
 ## 코드 받는 법
 일단 git 설치하기 -> https://git-scm.com/downloads
 ### visual studio를 사용하는 경우
-1. 원하는 곳에서 `git clone https://github.com/youngjin0305/RSA3072_implementation.git` 명령어 사용(잘 정리하고 싶으면 visual studio의 source/repos에 생성)
+1. 원하는 곳에서 `git clone https://github.com/youngjin0305/RSA3072_implementation.git` 명령어 사용(깔끔하게 정리하고 싶으면 visual studio의 source/repos 폴더에 생성)
 2. visual studio로 .sln파일을 열기
 ### vs code를 사용하는 경우
 너무 복잡하니까 알아서 해주세요(되도록 Visual Studio 사용을 권장)
@@ -35,6 +35,9 @@ visual studio에서 f5를 누르면 이 안에 있는 코드가 실행됩니다.
 3. `> git push`
 ### Github에 올라온 최신 코드 받아오기
 1. `> git pull`
+
+## 커밋 전략
+신경 쓸 필요 없으니 그냥 막 커밋 해주세요
 
 ## 뭔가 문제가 있을 경우
 ! **김영진에게 연락 주시거나 톡방에 말해주세요**
