@@ -98,3 +98,53 @@ int is_probably_prime(const Bignum* n, int k){//k=64
     }
     return isprime;
 }
+
+
+void generate_prime(Bignum* prime, int bits) {
+    Bignum candidate;
+
+    while (1) {
+        bignum_init(&candidate);
+
+        // 난수 생성에 필요한 바이트 수 계산
+        int bytes = (bits + 7) / 8;
+        unsigned char* buffer = (unsigned char*)malloc(bytes);
+        if (buffer == NULL) continue;
+
+        // 안전한 난수 생성
+        if (generate_secure_random(buffer, bytes) != 0) {
+            free(buffer);
+            continue;
+        }
+
+        // 바이트를 Bignum으로 변환
+        for (int i = 0; i < bytes; i++) {
+            int limb_idx = i / 4; // 몇 번째 limb인지
+            int byte_idx = i % 4; //그 limb 안에서 몇 번째 바이트 자리인지
+
+            candidate.limbs[limb_idx] |= ((uint32_t)buffer[i]) << (byte_idx * 8);
+            if (limb_idx >= candidate.size) {
+                candidate.size = limb_idx + 1;
+            }
+        }
+
+        free(buffer);
+
+        // 최상위 비트를 1로 설정(비트 크기 보장)
+        int msb_limb = (bits - 1) / 32;
+        int msb_bit = (bits - 1) % 32;
+        candidate.limbs[msb_limb] |= (1 << msb_bit);
+        if (msb_limb >= candidate.size) {
+            candidate.size = msb_limb + 1;
+        }
+
+        // 최하위 비트를 1로 설정(홀수 보장)
+        candidate.limbs[0] |= 1;
+
+        // 밀러-라빈 테스트로 소수인지 확인
+        if (is_probably_prime(&candidate, MILLER_RABIN_ROUNDS)) {
+            bignum_copy(prime, &candidate);
+            return;
+        }
+    }
+}
