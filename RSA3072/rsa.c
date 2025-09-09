@@ -12,7 +12,7 @@ void rsa_decrypt(Bignum* message, const Bignum* ciphertext, const RSA_PrivateKey
 	// m_p = c^dP mod p
 	bignum_mod_exp(&m_p, ciphertext, &priv_key->dP, &priv_key->p);
 	// m_q = c^dQ mod q
-	bignum_mod_exp(&m_p, ciphertext, &priv_key->dQ, &priv_key->q);
+	bignum_mod_exp(&m_q, ciphertext, &priv_key->dQ, &priv_key->q);
 
 	// h = q^(-1) * (m_p - m_q) mod p
 	if (bignum_compare(&m_p, &m_q) < 0) {
