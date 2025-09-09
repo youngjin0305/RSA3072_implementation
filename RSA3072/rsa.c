@@ -23,6 +23,7 @@ void rsa_decrypt(Bignum* message, const Bignum* ciphertext, const RSA_PrivateKey
 		bignum_subtract(&h, &m_p, &m_q);
 	}
 	bignum_multiply(&h, &h, &priv_key->qInv);
+	bignum_divide(NULL, &h, &h, &priv_key->p);
 
     // m = m_q + q * h
     Bignum temp;
