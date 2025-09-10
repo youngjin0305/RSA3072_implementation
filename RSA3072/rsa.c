@@ -1,17 +1,11 @@
 #include "rsa.h"
 #include <string.h>
 
-// result = a mod m
-static void bignum_mod(Bignum* result, const Bignum* a, const Bignum* m) {
-	Bignum q, r;
-	bignum_divide(&q, &r, a, m);
-	bignum_copy(result, &r);
-}
-
 // RSA Ecryption
 void rsa_encrypt(Bignum* ciphertext, const Bignum* message, const RSA_PublicKey* pub_key) {
-	bignum_mod(message, message, &pub_key->n);
-	bignum_mod_exp(ciphertext, message, &pub_key->e, &pub_key->n);
+	Bignum m_reduced;
+	bignum_mod(&m_reduced, message, &pub_key->n);
+	bignum_mod_exp(ciphertext, &m_reduced, &pub_key->e, &pub_key->n);
 }
 
 // RSA Decryption
@@ -46,14 +40,15 @@ void rsa_decrypt(Bignum* message, const Bignum* ciphertext, const RSA_PrivateKey
  * ===================================================================== */
 // 0 초기화 + 작은 상수 세팅
 static void bignum_set_u32(Bignum* r, uint32_t v) {
-	bignum_init(r);
-	r->limbs[0] = v;
-	// size 갱신
-	r->size = 1;
-	for (int i = BIGNUM_ARRAY_SIZE - 1; i >= 0; --i) {
-		if (r->limbs[i] != 0) { r->size = i + 1; break; }
+	bignum_init(r); // r->size = 0으로 초기화
+
+	if (v == 0) {
+		// v가 0이면, size가 0인 상태 그대로 반환
+		return;
 	}
-	if (r->size == 0) r->size = 1;
+
+	r->limbs[0] = v;
+	r->size = 1;
 }
 
 // a = a - v (v는 작음)
@@ -78,13 +73,9 @@ static void bignum_gcd(Bignum* g, const Bignum* a, const Bignum* b) {
 // L = Lcm(a,b) = (a/gcd(a,b)) * b
 static void bignum_lcm(Bignum* l, const Bignum* a, const Bignum* b) {
 	Bignum g, q, r, t;
-	printf("- gcd\n");
 	bignum_gcd(&g, a, b);
-	printf("- divide\n");
 	bignum_divide(&q, &r, a, &g);	// q = a / g
-	printf("- multiply\n");
 	bignum_multiply(&t, &q, b);	// t = q * b
-	printf("- end\n");
 	bignum_copy(l, &t);
 }
 
@@ -151,27 +142,12 @@ void rsa_generate_keys(RSA_PublicKey* pub_key, RSA_PrivateKey* priv_key, const B
 	Bignum p1, q1; bignum_copy(&p1, p); bignum_sub_u32(&p1, 1);
 	bignum_copy(&q1, q); bignum_sub_u32(&q1, 1);
 
-	// -- 너무 오래걸려서 고정 e로 테스트함 ----
-	//printf("lambdan\n");
-	//// λ(n) = lcm(p-1, q-1)
-	//Bignum lambda_n; bignum_lcm(&lambda_n, &p1, &q1);
+	// λ(n) = lcm(p-1, q-1)
+	Bignum lambda_n; bignum_lcm(&lambda_n, &p1, &q1);
 
-	//printf("chose e\n");
-	//// e 선택
-	//Bignum e; pick_public_exponent(&e, &lambda_n);
-	// -----------------------------------------
-
-	Bignum e;
-	bignum_init(&e);
-	e.limbs[0] = 65537;
-	e.size = 1;
-
-	Bignum lambda_n;
-	bignum_multiply(&lambda_n, &p1, &q1);
-
-	// -----------------------------------------
+	// e 선택
+	Bignum e; pick_public_exponent(&e, &lambda_n);
 	
-	printf("gen d\n");
 	// d = e^(-1) mod λ(n)
 	Bignum d;
 	if (!bignum_modinv(&d, &e, &lambda_n)) {
@@ -180,14 +156,12 @@ void rsa_generate_keys(RSA_PublicKey* pub_key, RSA_PrivateKey* priv_key, const B
 		bignum_set_u32(&d, 0);
 	}
 
-	printf("crt param\n");
 	// CRT 파라미터
 	Bignum dP, dQ, qInv;
 	bignum_mod(&dP, &d, &p1);	// d mod (p-1)
 	bignum_mod(&dQ, &d, &q1);	// d mod (q-1)
 	bignum_modinv(&qInv, q, p);	// q^(-1) mod p
 
-	printf("end\n");
 	// 결과 저장
 	bignum_copy(&pub_key->n, &n);
 	bignum_copy(&pub_key->e, &e);

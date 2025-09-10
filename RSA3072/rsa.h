@@ -62,6 +62,7 @@ void bignum_divide(Bignum* quotient, Bignum* remainder, const Bignum* a, const B
 void bignum_mod_exp(Bignum* result, const Bignum* base, const Bignum* exp, const Bignum* modulus);
 
 void bn_mod_mul(Bignum* r, const Bignum* a, const Bignum* b, const Bignum* m);
+void bignum_mod(Bignum* result, const Bignum* a, const Bignum* m);
 
 
 // =============================================================================

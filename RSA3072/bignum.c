@@ -585,22 +585,35 @@ static void mont_reduce_redc(Bignum* r, uint32_t* T, const Bignum* n, uint32_t n
             T[i + j] = (uint32_t)sum;
             carry = sum >> 32;
         }
-        uint64_t acc = (uint64_t)T[i + k] + carry;
-        T[i + k] = (uint32_t)acc;
-        T[i + k + 1] += (uint32_t)(acc >> 32);
-        // 하위 워드 하나씩 자연스럽게 소비됨
+
+        int z = i + k;
+        while (carry > 0 && z < (2 * k + 2)) {
+            uint64_t sum = (uint64_t)T[z] + carry;
+            T[z] = (uint32_t)sum;
+            carry = sum >> 32;
+            z++;
+        }
     }
 
-    // 결과 후보는 상위 k 워드
-    r->size = k;
-    for (int j = 0; j < k; ++j) r->limbs[j] = T[k + j];
-    bn_normalize(r);
-
-    // 조건부 감산: r >= n 이면 r -= n
-    if (bn_ucmp(r, n) >= 0) {
-        Bignum tmp; bn_zero(&tmp);
-        bn_usub(&tmp, r, n);
-        *r = tmp;
+    // 결과 후보는 상위 k 워드 (T가 R^k 만큼 암묵적으로 시프트됨)
+    // T의 상위 limb (T[k]부터)가 n보다 큰지 확인
+    bool final_borrow = false;
+    uint64_t borrow = 0;
+    for (int i = 0; i < k; ++i) {
+        uint64_t diff = (uint64_t)T[k + i] - n->limbs[i] - borrow;
+        r->limbs[i] = (uint32_t)diff;
+        borrow = (diff >> 63) & 1;
+    }
+    // 최종 borrow가 있다면 T[k..] < n 이므로, T[k..]를 그대로 사용
+    // borrow가 없다면 T[k..] >= n 이므로, 뺀 결과인 r을 사용
+    if (!borrow) {
+        r->size = k;
+        bn_normalize(r);
+    }
+    else {
+        r->size = k;
+        memcpy(r->limbs, &T[k], k * sizeof(uint32_t));
+        bn_normalize(r);
     }
 }
 
@@ -657,30 +670,39 @@ void bn_mod_mul(Bignum* r, const Bignum* a, const Bignum* b, const Bignum* m) {
     from_mont(r, &C_, m, n0_inv);
 }
 
-/* ---- (교체) 모듈러 거듭제곱: Montgomery 기반 ---- */
+// result = a mod m
+void bignum_mod(Bignum* result, const Bignum* a, const Bignum* m) {
+    Bignum q, r;
+    bignum_divide(&q, &r, a, m);
+    bignum_copy(result, &r);
+}
+
+/* ---- 모듈러 거듭제곱: Montgomery 기반 ---- */
 // result = base^exp mod modulus
 void bignum_mod_exp(Bignum* result, const Bignum* base, const Bignum* exp, const Bignum* modulus) {
     if (bn_is_zero(modulus)) { bn_zero(result); return; }
 
+    // 1. base를 modulus로 나눈 나머지로 정규화하여 안전성 확보
+    Bignum base_reduced;
+    bignum_mod(&base_reduced, base, modulus);
+
+    // 2. 이제부터 안전하게 정규화된 base_reduced를 사용
     uint32_t n0_inv = mont_n0_inv32(modulus);
     Bignum R2; compute_R2_mod(modulus, &R2);
 
-    Bignum base_m; to_mont(&base_m, base, modulus, n0_inv, &R2);
+    Bignum base_m; to_mont(&base_m, &base_reduced, modulus, n0_inv, &R2);
 
     Bignum one; bignum_init(&one); one.size = 1; one.limbs[0] = 1u;
     Bignum r_m; to_mont(&r_m, &one, modulus, n0_inv, &R2);
 
-    // 좌→우 square-and-multiply (Montgomery 도메인)
+    // ... 이하 코드는 동일 ...
     int nbits = bn_bit_length(exp);
     for (int i = nbits - 1; i >= 0; --i) {
-        // r = r^2
         mont_mul_core(&r_m, &r_m, &r_m, modulus, n0_inv);
         if (bn_get_bit(exp, i)) {
-            // r = r * base'
             mont_mul_core(&r_m, &r_m, &base_m, modulus, n0_inv);
         }
     }
 
-    // 일반 도메인으로 복귀
     from_mont(result, &r_m, modulus, n0_inv);
 }

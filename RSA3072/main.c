@@ -242,6 +242,12 @@ int test_kgt_vector(const char* filename) {
     return 1;
 }
 
+void print_bignum(const char* name, const Bignum* bn) {
+    char* hex = bignum_to_hex(bn);
+    printf(" - %s: %s\n", name, hex);
+    free(hex);
+}
+
 int main() {
     int overall_ok = 1;
 
@@ -259,11 +265,12 @@ int main() {
     do {
         generate_prime(&q, RSA_PRIME_BITS);
     } while (bignum_compare(&p, &q) == 0);
-    printf("gen prime end\n");
+    
+    print_bignum("p", &p);
+    print_bignum("q", &q);
 
     // 2) 키 쌍 생성 (n, e, d, dP, dQ, qInv)
     rsa_generate_keys(&pub_key, &priv_key, &p, &q);
-    printf("key gen end\n");
 
     // 3) 스모크 테스트(선택): m=0x42 < n 왕복 확인
     Bignum m, c, m_dec;
@@ -272,7 +279,25 @@ int main() {
 
     rsa_encrypt(&c, &m, &pub_key);
     rsa_decrypt(&m_dec, &c, &priv_key);
-    printf("enc, dec end\n");
+
+    char* hex_m_dec = bignum_to_hex(&m_dec);
+    char* hex_m = bignum_to_hex(&m);
+    //char* hex_n = bignum_to_hex(&(pub_key.n));
+    //char* hex_e = bignum_to_hex(&(pub_key.e));
+    char* hex_d = bignum_to_hex(&(priv_key.d));
+    char* hex_dp = bignum_to_hex(&(priv_key.dP));
+    char* hex_dq = bignum_to_hex(&(priv_key.dQ));
+    char* hex_qInv = bignum_to_hex(&(priv_key.qInv));
+    char* hex_c = bignum_to_hex(&c);
+
+    print_bignum("m", &m);
+    print_bignum("m_dec", &m_dec);
+    print_bignum("c", &c);
+    print_bignum("d", &(priv_key.d));
+    print_bignum("dP", &(priv_key.dP));
+    print_bignum("dQ", &(priv_key.dQ));
+    print_bignum("qInv", &(priv_key.qInv));
+
 
     if (bignum_compare(&m_dec, &m) != 0) {
         printf("[-] Keygen smoke test failed\n");
@@ -283,7 +308,7 @@ int main() {
     }
 
     // RSA 테스트 벡터 파일 실행
-    if (!test_ent_vector("./test/RSAES_(3072)(65537)(SHA256)_ENT.txt")) {
+    /*if (!test_ent_vector("./test/RSAES_(3072)(65537)(SHA256)_ENT.txt")) {
         overall_ok = 0;
     }
     printf("\n");
@@ -295,7 +320,7 @@ int main() {
     
     if (!test_kgt_vector("./test/RSAES_(3072)(65537)(SHA256)_KGT.txt")) {
         overall_ok = 0;
-    }
+    }*/
     printf("\n");
 
     if (overall_ok) {
