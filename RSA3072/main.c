@@ -281,17 +281,17 @@ int main() {
     }
 
     // RSA 테스트 벡터 파일 실행
-    if (!test_ent_vector("RSAES_(3072)(65537)(SHA256)_ENT.txt")) {
+    if (!test_ent_vector("./test/RSAES_(3072)(65537)(SHA256)_ENT.txt")) {
         overall_ok = 0;
     }
     printf("\n");
 
-    if (!test_det_vector("RSAES_(3072)(65537)(SHA256)_DET.txt")) {
+    if (!test_det_vector("./test/RSAES_(3072)(65537)(SHA256)_DET.txt")) {
         overall_ok = 0;
     }
     printf("\n");
     
-    if (!test_kgt_vector("RSAES_(3072)(65537)(SHA256)_KGT.txt")) {
+    if (!test_kgt_vector("./test/RSAES_(3072)(65537)(SHA256)_KGT.txt")) {
         overall_ok = 0;
     }
     printf("\n");

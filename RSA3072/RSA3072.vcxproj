@@ -102,7 +102,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
@@ -130,7 +130,9 @@
     <ClInclude Include="rsa.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="bignum.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="oaep.c" />
     <ClCompile Include="prime.c" />
     <ClCompile Include="random.c" />
     <ClCompile Include="rsa.c" />

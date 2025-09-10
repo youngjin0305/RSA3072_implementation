@@ -32,5 +32,11 @@
     <ClCompile Include="rsa.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="bignum.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="oaep.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
