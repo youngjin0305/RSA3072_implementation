@@ -70,13 +70,3 @@ int random_3072_candidate(unsigned char out384[384]) {
 
 // 필요한 길이만큼 OS CSPRNG에서 바이트를 읽어 옴
 int random_oaep_seed32(unsigned char out[32]) { return generate_secure_random(out, 32); }
-
-// 바이트 배열을 읽기 좋은 16진수로 출력
-static void hexdump(const unsigned char* p, size_t n) {
-    for (size_t i = 0; i < n; ++i) {
-        printf("%02X", p[i]);
-        if ((i + 1) % 16 == 0) puts("");
-        else if ((i + 1) % 2 == 0) putchar(' ');
-    }
-    if (n % 16) puts("");
-}
