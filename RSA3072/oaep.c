@@ -88,7 +88,7 @@ static int rsa_mgf1_fixed(unsigned char *mask, size_t mask_len,
  * seed: OAEP 시드 (길이 OAEP_HLEN)
  * 반환: 0 성공, -1 실패
  */
-int rsa_oaep_pad_fixed(unsigned char *out, const unsigned char *msg, size_t msg_len,
+int rsa_oaep_pad(unsigned char *out, const unsigned char *msg, size_t msg_len,
                        size_t k, const unsigned char *seed) {
     if (!out || !msg || !seed) return -1;
     if (k != RSA3072_K_BYTES) return -1; /* 이 함수는 RSA-3072 전용 */

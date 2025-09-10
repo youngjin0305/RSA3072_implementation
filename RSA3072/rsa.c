@@ -1,8 +1,16 @@
 #include "rsa.h"
 #include <string.h>
 
+// result = a mod m
+static void bignum_mod(Bignum* result, const Bignum* a, const Bignum* m) {
+	Bignum q, r;
+	bignum_divide(&q, &r, a, m);
+	bignum_copy(result, &r);
+}
+
 // RSA Ecryption
 void rsa_encrypt(Bignum* ciphertext, const Bignum* message, const RSA_PublicKey* pub_key) {
+	bignum_mod(message, message, &pub_key->n);
 	bignum_mod_exp(ciphertext, message, &pub_key->e, &pub_key->n);
 }
 
@@ -23,7 +31,7 @@ void rsa_decrypt(Bignum* message, const Bignum* ciphertext, const RSA_PrivateKey
 	else {
 		bignum_subtract(&h, &m_p, &m_q);
 	}
-	bignum_multiply(&h, &h, &priv_key->qInv);
+	bn_mod_mul(&h, &h, &priv_key->qInv, &priv_key->p);
 	bignum_divide(NULL, &h, &h, &priv_key->p);
 
     // m = m_q + q * h
@@ -55,13 +63,6 @@ static void bignum_sub_u32(Bignum* a, uint32_t v) {
 	bignum_copy(a, &r);
 }
 
-// result = a mod m
-static void bignum_mod(Bignum* result, const Bignum* a, const Bignum* m) {
-	Bignum q, r;
-	bignum_divide(&q, &r, a, m);
-	bignum_copy(result, &r);
-}
-
 // g = gcd(a,b)
 static void bignum_gcd(Bignum* g, const Bignum* a, const Bignum* b) {
 	Bignum A, B, R, zero; bignum_copy(&A, a); bignum_copy(&B, b); bignum_set_u32(&zero, 0);
@@ -77,13 +78,17 @@ static void bignum_gcd(Bignum* g, const Bignum* a, const Bignum* b) {
 // L = Lcm(a,b) = (a/gcd(a,b)) * b
 static void bignum_lcm(Bignum* l, const Bignum* a, const Bignum* b) {
 	Bignum g, q, r, t;
+	printf("- gcd\n");
 	bignum_gcd(&g, a, b);
+	printf("- divide\n");
 	bignum_divide(&q, &r, a, &g);	// q = a / g
+	printf("- multiply\n");
 	bignum_multiply(&t, &q, b);	// t = q * b
+	printf("- end\n");
 	bignum_copy(l, &t);
 }
 
-// inv = a^{-1} mod m (gcd(a,m)=1 가정)
+// inv = a^{-1} mod m  (gcd(a,m)=1 가정, 반환 1=성공, 0=실패)
 static int bignum_modinv(Bignum* inv, const Bignum* a, const Bignum* m) {
 	Bignum r0, r1, t0, t1, zero;
 	bignum_copy(&r0, m);
@@ -93,33 +98,34 @@ static int bignum_modinv(Bignum* inv, const Bignum* a, const Bignum* m) {
 	bignum_set_u32(&zero, 0);
 
 	while (bignum_compare(&r1, &zero) != 0) {
-		Bignum q, r, q_t1, tmp;
-		bignum_divide(&q, &r, &r0, &r1);	// q = r0 / r1, r = r0 % r1
+		Bignum q, r;
+		bignum_divide(&q, &r, &r0, &r1); // q = r0 / r1, r = r0 % r1
 		bignum_copy(&r0, &r1);
 		bignum_copy(&r1, &r);
 
-		// tmp = t0 - q*t1 (mod m) -> 음수 방지 위해 모듈러 공간 유지
+		// ---- fix: (q*t1) % m 로 축소한 뒤 t0에서 빼기 ----
+		Bignum q_t1, q_t1_mod, tmp;
 		bignum_multiply(&q_t1, &q, &t1);
-		if (bignum_compare(&t0, &q_t1) >= 0) {
-			bignum_subtract(&tmp, &t0, &q_t1);
+		bignum_mod(&q_t1_mod, &q_t1, m);    // q_t1_mod = (q*t1) % m
+
+		if (bignum_compare(&t0, &q_t1_mod) >= 0) {
+			bignum_subtract(&tmp, &t0, &q_t1_mod);
 		}
 		else {
-			// tmp = m - (q_t1 - t0)
-			Bignum diff;
-			bignum_subtract(&diff, &q_t1, &t0);
-			bignum_subtract(&tmp, m, &diff);
+			Bignum diff;                    // diff = q_t1_mod - t0
+			bignum_subtract(&diff, &q_t1_mod, &t0);
+			bignum_subtract(&tmp, m, &diff); // tmp = m - diff
 		}
-
 		bignum_copy(&t0, &t1);
 		bignum_copy(&t1, &tmp);
 	}
 
 	Bignum one; bignum_set_u32(&one, 1);
-	if (bignum_compare(&r0, &one) != 0) {	// gcd != 1
+	if (bignum_compare(&r0, &one) != 0) { // gcd != 1
 		bignum_set_u32(inv, 0);
 		return 0;
 	}
-	bignum_copy(inv, &t0);	// 이미 0..m-1
+	bignum_copy(inv, &t0); // 0..m-1
 	return 1;
 }
 
@@ -145,12 +151,27 @@ void rsa_generate_keys(RSA_PublicKey* pub_key, RSA_PrivateKey* priv_key, const B
 	Bignum p1, q1; bignum_copy(&p1, p); bignum_sub_u32(&p1, 1);
 	bignum_copy(&q1, q); bignum_sub_u32(&q1, 1);
 
-	// λ(n) = lcm(p-1, q-1)
-	Bignum lambda_n; bignum_lcm(&lambda_n, &p1, &q1);
+	// -- 너무 오래걸려서 고정 e로 테스트함 ----
+	//printf("lambdan\n");
+	//// λ(n) = lcm(p-1, q-1)
+	//Bignum lambda_n; bignum_lcm(&lambda_n, &p1, &q1);
 
-	// e 선택
-	Bignum e; pick_public_exponent(&e, &lambda_n);
+	//printf("chose e\n");
+	//// e 선택
+	//Bignum e; pick_public_exponent(&e, &lambda_n);
+	// -----------------------------------------
 
+	Bignum e;
+	bignum_init(&e);
+	e.limbs[0] = 65537;
+	e.size = 1;
+
+	Bignum lambda_n;
+	bignum_multiply(&lambda_n, &p1, &q1);
+
+	// -----------------------------------------
+	
+	printf("gen d\n");
 	// d = e^(-1) mod λ(n)
 	Bignum d;
 	if (!bignum_modinv(&d, &e, &lambda_n)) {
@@ -159,12 +180,14 @@ void rsa_generate_keys(RSA_PublicKey* pub_key, RSA_PrivateKey* priv_key, const B
 		bignum_set_u32(&d, 0);
 	}
 
+	printf("crt param\n");
 	// CRT 파라미터
 	Bignum dP, dQ, qInv;
 	bignum_mod(&dP, &d, &p1);	// d mod (p-1)
 	bignum_mod(&dQ, &d, &q1);	// d mod (q-1)
 	bignum_modinv(&qInv, q, p);	// q^(-1) mod p
 
+	printf("end\n");
 	// 결과 저장
 	bignum_copy(&pub_key->n, &n);
 	bignum_copy(&pub_key->e, &e);

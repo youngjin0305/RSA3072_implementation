@@ -7,7 +7,7 @@
 // RSA 키 비트 길이 정의 (3072 비트)
 #define RSA_KEY_BITS 3072
 // 소수 p, q의 비트 길이 (키 길이의 절반)
-#define RSA_PRIME_BITS (RSA_KEY_BITS / 2)
+#define RSA_PRIME_BITS 128 // (RSA_KEY_BITS / 2)
 // 큰 수 저장을 위한 배열 크기 (32비트 정수 기준)
 #define BIGNUM_ARRAY_SIZE ((RSA_KEY_BITS / 32) + 1)
 // 밀러-라빈 테스트 반복 횟수
@@ -60,6 +60,8 @@ void bignum_divide(Bignum* quotient, Bignum* remainder, const Bignum* a, const B
 // 모듈러 거듭제곱 (RSA의 핵심 연산)
 // result = base^exp mod modulus
 void bignum_mod_exp(Bignum* result, const Bignum* base, const Bignum* exp, const Bignum* modulus);
+
+void bn_mod_mul(Bignum* r, const Bignum* a, const Bignum* b, const Bignum* m);
 
 
 // =============================================================================
