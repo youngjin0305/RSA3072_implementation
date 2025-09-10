@@ -1,4 +1,5 @@
 #include "rsa.h"
+#include <string.h>
 
 // RSA Ecryption
 void rsa_encrypt(Bignum* ciphertext, const Bignum* message, const RSA_PublicKey* pub_key) {
@@ -29,4 +30,150 @@ void rsa_decrypt(Bignum* message, const Bignum* ciphertext, const RSA_PrivateKey
     Bignum temp;
 	bignum_multiply(&temp, &h, &priv_key->q);
 	bignum_add(message, &m_q, &temp);
+}
+
+
+/* ========================================================================
+ * 내부 유틸
+ * ===================================================================== */
+// 0 초기화 + 작은 상수 세팅
+static void bignum_set_u32(Bignum* r, uint32_t v) {
+	bignum_init(r);
+	r->limbs[0] = v;
+	// size 갱신
+	r->size = 1;
+	for (int i = BIGNUM_ARRAY_SIZE - 1; i >= 0; --i) {
+		if (r->limbs[i] != 0) { r->size = i + 1; break; }
+	}
+	if (r->size == 0) r->size = 1;
+}
+
+// a = a - v (v는 작음)
+static void bignum_sub_u32(Bignum* a, uint32_t v) {
+	Bignum t; bignum_set_u32(&t, v);
+	Bignum r; bignum_subtract(&r, a, &t);
+	bignum_copy(a, &r);
+}
+
+// result = a mod m
+static void bignum_mod(Bignum* result, const Bignum* a, const Bignum* m) {
+	Bignum q, r;
+	bignum_divide(&q, &r, a, m);
+	bignum_copy(result, &r);
+}
+
+// g = gcd(a,b)
+static void bignum_gcd(Bignum* g, const Bignum* a, const Bignum* b) {
+	Bignum A, B, R, zero; bignum_copy(&A, a); bignum_copy(&B, b); bignum_set_u32(&zero, 0);
+	while (bignum_compare(&B, &zero) != 0) {
+		Bignum Q;
+		bignum_divide(&Q, &R, &A, &B);	// R = A % B
+		bignum_copy(&A, &B);
+		bignum_copy(&B, &R);
+	}
+	bignum_copy(g, &A);
+}
+
+// L = Lcm(a,b) = (a/gcd(a,b)) * b
+static void bignum_lcm(Bignum* l, const Bignum* a, const Bignum* b) {
+	Bignum g, q, r, t;
+	bignum_gcd(&g, a, b);
+	bignum_divide(&q, &r, a, &g);	// q = a / g
+	bignum_multiply(&t, &q, b);	// t = q * b
+	bignum_copy(l, &t);
+}
+
+// inv = a^{-1} mod m (gcd(a,m)=1 가정)
+static int bignum_modinv(Bignum* inv, const Bignum* a, const Bignum* m) {
+	Bignum r0, r1, t0, t1, zero;
+	bignum_copy(&r0, m);
+	bignum_copy(&r1, a);
+	bignum_set_u32(&t0, 0);
+	bignum_set_u32(&t1, 1);
+	bignum_set_u32(&zero, 0);
+
+	while (bignum_compare(&r1, &zero) != 0) {
+		Bignum q, r, q_t1, tmp;
+		bignum_divide(&q, &r, &r0, &r1);	// q = r0 / r1, r = r0 % r1
+		bignum_copy(&r0, &r1);
+		bignum_copy(&r1, &r);
+
+		// tmp = t0 - q*t1 (mod m) -> 음수 방지 위해 모듈러 공간 유지
+		bignum_multiply(&q_t1, &q, &t1);
+		if (bignum_compare(&t0, &q_t1) >= 0) {
+			bignum_subtract(&tmp, &t0, &q_t1);
+		}
+		else {
+			// tmp = m - (q_t1 - t0)
+			Bignum diff;
+			bignum_subtract(&diff, &q_t1, &t0);
+			bignum_subtract(&tmp, m, &diff);
+		}
+
+		bignum_copy(&t0, &t1);
+		bignum_copy(&t1, &tmp);
+	}
+
+	Bignum one; bignum_set_u32(&one, 1);
+	if (bignum_compare(&r0, &one) != 0) {	// gcd != 1
+		bignum_set_u32(inv, 0);
+		return 0;
+	}
+	bignum_copy(inv, &t0);	// 이미 0..m-1
+	return 1;
+}
+
+// e 선택: 65537 기본, gcd(e, λ(n))=1 보장되도록 증가
+static void pick_public_exponent(Bignum* e, const Bignum* lambda_n) {
+	Bignum g, one, two; bignum_set_u32(e, 65537); bignum_set_u32(&one, 1); bignum_set_u32(&two, 2);
+	while (1) {
+		bignum_gcd(&g, e, lambda_n);
+		if (bignum_compare(&g, &one) == 0) break;
+		Bignum t; bignum_add(&t, e, &two); bignum_copy(e, &t);	// 홀수만
+	}
+}
+
+
+/* ========================================================================
+ * 키 생성
+ * ===================================================================== */
+void rsa_generate_keys(RSA_PublicKey* pub_key, RSA_PrivateKey* priv_key, const Bignum* p, const Bignum* q) {
+	// n = p*q
+	Bignum n; bignum_multiply(&n, p, q);
+
+	// p-1, q-1
+	Bignum p1, q1; bignum_copy(&p1, p); bignum_sub_u32(&p1, 1);
+	bignum_copy(&q1, q); bignum_sub_u32(&q1, 1);
+
+	// λ(n) = lcm(p-1, q-1)
+	Bignum lambda_n; bignum_lcm(&lambda_n, &p1, &q1);
+
+	// e 선택
+	Bignum e; pick_public_exponent(&e, &lambda_n);
+
+	// d = e^(-1) mod λ(n)
+	Bignum d;
+	if (!bignum_modinv(&d, &e, &lambda_n)) {
+		// 이론상 pick_public_exponent가 보장하지만, 방어적으로 처리
+		// e를 65537+2k로 올리며 재시도해도 되지만, 여기서는 0 세팅 후 반환
+		bignum_set_u32(&d, 0);
+	}
+
+	// CRT 파라미터
+	Bignum dP, dQ, qInv;
+	bignum_mod(&dP, &d, &p1);	// d mod (p-1)
+	bignum_mod(&dQ, &d, &q1);	// d mod (q-1)
+	bignum_modinv(&qInv, q, p);	// q^(-1) mod p
+
+	// 결과 저장
+	bignum_copy(&pub_key->n, &n);
+	bignum_copy(&pub_key->e, &e);
+
+	bignum_copy(&priv_key->n, &n);
+	bignum_copy(&priv_key->d, &d);
+	bignum_copy(&priv_key->p, p);
+	bignum_copy(&priv_key->q, q);
+	bignum_copy(&priv_key->dP, &dP);
+	bignum_copy(&priv_key->dQ, &dQ);
+	bignum_copy(&priv_key->qInv, &qInv);
 }

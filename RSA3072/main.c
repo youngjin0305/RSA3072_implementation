@@ -163,18 +163,37 @@ int main() {
     int overall_ok = 1;
 
     // RSA 키 생성 파트 (현재는 구현되어 있지 않으므로 주석 처리)
-    /*
-    Bignum p, q, d, dP, dQ, qInv;
+    Bignum p, q;
     RSA_PublicKey pub_key;
     RSA_PrivateKey priv_key;
 
-    // generate_prime 함수를 사용하여 p와 q 생성
-    generate_prime(&p, RSA_PRIME_BITS);
-    generate_prime(&q, RSA_PRIME_BITS);
+    bignum_init(&p);
+    bignum_init(&q);
 
-    // rsa_generate_keys 함수를 사용하여 키 쌍 생성
+    // 1) 두 소수 p, q 생성 (p !=q 보장)
+    generate_prime(&p, RSA_PRIME_BITS);
+    do {
+        generate_prime(&q, RSA_PRIME_BITS);
+    } while (bignum_compare(&p, &q) == 0);
+
+    // 2) 키 쌍 생성 (n, e, d, dP, dQ, qInv)
     rsa_generate_keys(&pub_key, &priv_key, &p, &q);
-    */
+
+    // 3) 스모크 테스트(선택): m=0x42 < n 왕복 확인
+    Bignum m, c, m_dec;
+    bignum_init(&m); bignum_init(&c); bignum_init(&m_dec);
+    m.limbs[0] = 0x42; m.size = 1;
+
+    rsa_encrypt(&c, &m, &pub_key);
+    rsa_decrypt(&m_dec, &c, &priv_key);
+
+    if (bignum_compare(&m_dec, &m) != 0) {
+        printf("[-] Keygen smoke test failed\n");
+        overall_ok = 0; // 기존 main의 상태 플래그 사용
+    }
+    else {
+        printf("[+] Keygen smoke test passed\n");
+    }
 
     // ENT 테스트 벡터 실행 (OAEP 패딩 없는 원시 암호화)
     if (!test_ent_vector("RSAES_(3072)(3)(SHA256)_ENT.txt")) {
