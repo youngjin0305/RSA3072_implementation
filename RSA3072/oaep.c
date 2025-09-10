@@ -50,10 +50,19 @@ static int rsa_mgf1(unsigned char* mask, size_t mask_len, const unsigned char* s
         counter_be[2] = (unsigned char)((counter >> 8) & 0xFF);
         counter_be[3] = (unsigned char)(counter & 0xFF);
 
-        unsigned char combined[seed_len + 4];
+        // 동적 메모리 할당으로 변경
+        unsigned char* combined = (unsigned char*)malloc(seed_len + 4);
+        if (!combined) {
+            return -1; // 메모리 할당 실패
+        }
         memcpy(combined, seed, seed_len);
         memcpy(combined + seed_len, counter_be, 4);
+
+        // 해시 계산
         dummy_sha256(combined, seed_len + 4, digest);
+        
+        // 동적 할당 메모리 해제
+        free(combined);
 
         size_t to_copy = (mask_len - generated < 32) ? (mask_len - generated) : 32;
         memcpy(mask + generated, digest, to_copy);
