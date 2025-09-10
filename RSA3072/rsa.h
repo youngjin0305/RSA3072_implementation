@@ -31,7 +31,7 @@ typedef struct {
     Bignum p;
     Bignum q;
     Bignum dP; // d mod (p-1)
-    Bignum dQ; // d mod (p-1)
+    Bignum dQ; // d mod (q-1)
     Bignum qInv; // q^(-1) mod p
 } RSA_PrivateKey; // ∞≥¿Œ≈∞
 
