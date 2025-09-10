@@ -11,7 +11,7 @@ int is_probably_prime(const Bignum* n, int k){//k=64
     //2의 배수이면 바로 0 반환
     bignum_init(&q0);
     bignum_init(&r0);
-    bignum_devide(&q0, &r0, n, &two);
+    bignum_divide(&q0, &r0, n, &two);
     if(bignum_compare(&r0, &zero)==0) return 0;
 
     for(int i=0; i<k; i++){
