@@ -1,7 +1,29 @@
-#include "oaep.h"
+/*
+ * RSAES-OAEP Padding 구현 (테스트용 dummy SHA-256 사용)
+ *
+ * 동작 과정:
+ * 1. 라벨 L을 해시한 lHash 준비 (여기서는 dummy 해시 사용).
+ * 2. 데이터 블록(DB) 구성:
+ *      DB = lHash || PS || 0x01 || M
+ *      - PS: 0x00 패딩
+ *      - M : 평문 메시지
+ * 3. 랜덤 seed를 사용해 MGF1으로 dbMask 생성 후
+ *      maskedDB = DB XOR dbMask
+ * 4. maskedDB를 사용해 MGF1으로 seedMask 생성 후
+ *      maskedSeed = seed XOR seedMask
+ * 5. 최종 암호화 입력 블록(EM) 구성:
+ *      EM = 0x00 || maskedSeed || maskedDB
+ *
+ * 이 EM을 RSA 모듈러 거듭제곱에 넣어 암호화를 수행함.
+ * 실제 구현에서는 SHA-256 해시를 사용해야 하나, 
+ * 본 코드는 테스트 목적으로 dummy 해시 함수를 사용.
+ */
+
+#include "rsa.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+
 
 
 // 테스트를 위해 고정된 값을 반환하는 더미 함수를 사용
