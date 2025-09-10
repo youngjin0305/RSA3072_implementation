@@ -1,11 +1,7 @@
 #include "rsa.h"
-#include "oaep.h" // OAEP 패딩을 위해 추가
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
-// RSAES_(3072)(3)(SHA256)_ENT.txt
-// RSAES_(3072)(3)(SHA256)_DET.txt
 
 // ========== 헥스 문자열 → 바이트 배열 변환 ==========
 static int hex_to_bytes(const char *hex, unsigned char *out, int max_len) {
@@ -29,7 +25,7 @@ static int hex_to_bytes(const char *hex, unsigned char *out, int max_len) {
     return out_len;
 }
 
-// ========== ENT 벡터 테스트 함수 ==========
+// ========== ENT 벡터 테스트 함수 (패딩 없는 원시 암호화) ==========
 int test_ent_vector(const char* filename) {
     FILE *fp = fopen(filename, "r");
     if (!fp) {
@@ -80,7 +76,7 @@ int test_ent_vector(const char* filename) {
     return test_passed;
 }
 
-// ========== DET 벡터 테스트 함수 ==========
+// ========== DET 벡터 테스트 함수 (OAEP 패딩 적용 암호화) ==========
 int test_det_vector(const char* filename) {
     FILE *fp = fopen(filename, "r");
     if (!fp) {
@@ -118,11 +114,9 @@ int test_det_vector(const char* filename) {
         if (test_ready) {
             test_count++;
             
-            // 1. OAEP 패딩 적용 (oaep.h에서 호출)
             int rsa_size_bytes = RSA_KEY_BITS / 8;
             rsa_oaep_pad(em_bytes, msg_bytes, msg_len, rsa_size_bytes, seed_bytes);
 
-            // 2. 패딩된 메시지를 Bignum으로 변환
             Bignum em_bn;
             bignum_init(&em_bn);
             for (int i = 0; i < rsa_size_bytes; i++) {
@@ -135,16 +129,12 @@ int test_det_vector(const char* filename) {
                 em_bn.size--;
             }
 
-            // 3. 암호화 수행
             RSA_PublicKey pub_key = { .n = n, .e = e };
             rsa_encrypt(&C_actual, &em_bn, &pub_key);
 
-            // 4. 결과 비교
             if (bignum_compare(&C_actual, &C) != 0) {
                 printf("[-] Test %d failed! (DET)\n", test_count);
                 test_passed = 0;
-            } else {
-                printf("[+] Test %d passed (DET)\n", test_count);
             }
             test_ready = 0;
         }
@@ -159,31 +149,130 @@ int test_det_vector(const char* filename) {
     return test_passed;
 }
 
+// ========== KGT 벡터 테스트 함수 (키 생성 검증) ==========
+int test_kgt_vector(const char* filename) {
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        printf("[-] Failed to open %s\n", filename);
+        return 0;
+    }
+    printf("[*] Testing with %s\n", filename);
+
+    char line[4096];
+    char key[64], value[4096];
+    Bignum p_file, q_file, n_file, e_file, d_file, dP_file, dQ_file, qInv_file;
+    bignum_init(&p_file); bignum_init(&q_file); bignum_init(&n_file); bignum_init(&e_file);
+    bignum_init(&d_file); bignum_init(&dP_file); bignum_init(&dQ_file); bignum_init(&qInv_file);
+    int test_count = 0;
+    int test_ready = 0;
+
+    while (fgets(line, sizeof(line), fp)) {
+        if (sscanf(line, "%63[^=] = %4095s", key, value) == 2) {
+            if (strcmp(key, "n ") == 0) {
+                bignum_from_hex(&n_file, value);
+            } else if (strcmp(key, "e ") == 0) {
+                bignum_from_hex(&e_file, value);
+            } else if (strcmp(key, "p ") == 0) {
+                bignum_from_hex(&p_file, value);
+            } else if (strcmp(key, "q ") == 0) {
+                bignum_from_hex(&q_file, value);
+            } else if (strcmp(key, "d ") == 0) {
+                bignum_from_hex(&d_file, value);
+            } else if (strcmp(key, "dP ") == 0) {
+                bignum_from_hex(&dP_file, value);
+            } else if (strcmp(key, "dQ ") == 0) {
+                bignum_from_hex(&dQ_file, value);
+            } else if (strcmp(key, "qInv ") == 0) {
+                bignum_from_hex(&qInv_file, value);
+                test_ready = 1;
+            }
+        }
+        
+        if (test_ready) {
+            test_count++;
+            
+            // p, q로부터 키 쌍 생성
+            RSA_PublicKey pub_gen;
+            RSA_PrivateKey priv_gen;
+            rsa_generate_keys(&pub_gen, &priv_gen, &p_file, &q_file);
+
+            // 생성된 값과 파일의 값을 비교
+            if (bignum_compare(&pub_gen.n, &n_file) != 0) {
+                printf("[-] KGT Test %d failed: n mismatch.\n", test_count);
+            }
+            if (bignum_compare(&pub_gen.e, &e_file) != 0) {
+                printf("[-] KGT Test %d failed: e mismatch.\n", test_count);
+            }
+            if (bignum_compare(&priv_gen.d, &d_file) != 0) {
+                printf("[-] KGT Test %d failed: d mismatch.\n", test_count);
+            }
+            if (bignum_compare(&priv_gen.p, &p_file) != 0) {
+                printf("[-] KGT Test %d failed: p mismatch.\n", test_count);
+            }
+            if (bignum_compare(&priv_gen.q, &q_file) != 0) {
+                printf("[-] KGT Test %d failed: q mismatch.\n", test_count);
+            }
+            if (bignum_compare(&priv_gen.dP, &dP_file) != 0) {
+                printf("[-] KGT Test %d failed: dP mismatch.\n", test_count);
+            }
+            if (bignum_compare(&priv_gen.dQ, &dQ_file) != 0) {
+                printf("[-] KGT Test %d failed: dQ mismatch.\n", test_count);
+            }
+            if (bignum_compare(&priv_gen.qInv, &qInv_file) != 0) {
+                printf("[-] KGT Test %d failed: qInv mismatch.\n", test_count);
+            }
+            
+            // 모든 값이 일치하면 성공
+            if (bignum_compare(&pub_gen.n, &n_file) == 0 &&
+                bignum_compare(&pub_gen.e, &e_file) == 0 &&
+                bignum_compare(&priv_gen.d, &d_file) == 0 &&
+                bignum_compare(&priv_gen.p, &p_file) == 0 &&
+                bignum_compare(&priv_gen.q, &q_file) == 0 &&
+                bignum_compare(&priv_gen.dP, &dP_file) == 0 &&
+                bignum_compare(&priv_gen.dQ, &dQ_file) == 0 &&
+                bignum_compare(&priv_gen.qInv, &qInv_file) == 0) {
+                printf("[+] KGT Test %d passed.\n", test_count);
+            } else {
+                printf("[-] KGT Test %d failed.\n", test_count);
+                return 0; // 첫 번째 실패에서 바로 종료
+            }
+            test_ready = 0;
+        }
+    }
+    fclose(fp);
+    printf("[+] All %d KGT tests completed successfully.\n", test_count);
+    return 1;
+}
+
 int main() {
     int overall_ok = 1;
 
-    // RSA 키 생성 파트 (현재는 구현되어 있지 않으므로 주석 처리)
+    // RSA 키 쌍 생성 파트 (현재 구현이 완료되지 않았으므로 주석 처리)
     /*
     Bignum p, q, d, dP, dQ, qInv;
     RSA_PublicKey pub_key;
     RSA_PrivateKey priv_key;
 
     // generate_prime 함수를 사용하여 p와 q 생성
-    generate_prime(&p, RSA_PRIME_BITS);
-    generate_prime(&q, RSA_PRIME_BITS);
+    // generate_prime(&p, RSA_PRIME_BITS);
+    // generate_prime(&q, RSA_PRIME_BITS);
 
     // rsa_generate_keys 함수를 사용하여 키 쌍 생성
-    rsa_generate_keys(&pub_key, &priv_key, &p, &q);
+    // rsa_generate_keys(&pub_key, &priv_key, &p, &q);
     */
 
-    // ENT 테스트 벡터 실행 (OAEP 패딩 없는 원시 암호화)
-    if (!test_ent_vector("RSAES_(3072)(3)(SHA256)_ENT.txt")) {
+    // RSA 테스트 벡터 파일 실행
+    if (!test_ent_vector("RSAES_(3072)(65537)(SHA256)_ENT.txt")) {
         overall_ok = 0;
     }
     printf("\n");
 
-    // DET 테스트 벡터 실행 (OAEP 패딩 있는 암호화)
-    if (!test_det_vector("RSAES_(3072)(3)(SHA256)_DET.txt")) {
+    if (!test_det_vector("RSAES_(3072)(65537)(SHA256)_DET.txt")) {
+        overall_ok = 0;
+    }
+    printf("\n");
+    
+    if (!test_kgt_vector("RSAES_(3072)(65537)(SHA256)_KGT.txt")) {
         overall_ok = 0;
     }
     printf("\n");
