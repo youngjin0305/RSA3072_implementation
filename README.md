@@ -24,7 +24,7 @@ visual studio에서 f5를 누르면 이 안에 있는 코드가 실행됩니다.
 1. 원하는 곳에서 `git clone https://github.com/youngjin0305/RSA3072_implementation.git` 명령어 사용(깔끔하게 정리하고 싶으면 visual studio의 source/repos 폴더에 생성)
 2. visual studio로 .sln파일을 열기
 ### vs code를 사용하는 경우
-너무 복잡하니까 알아서 해주세요(되도록 Visual Studio 사용을 권장)
+너무 복잡하니까 알아서 하거나 직접 수정으로 코드 붙여넣기(되도록 Visual Studio 사용을 권장)
 
 ## git 사용법
 제가 명령어가 편해서 명령어로 하는 법을 올려 드립니다 편한방법을 써주세요
