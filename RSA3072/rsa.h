@@ -1,23 +1,13 @@
 #pragma once
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h> // uint32_t와 같은 고정 너비 정수를 사용하기 위함
+#include "bignum.h"
 
 // RSA 키 비트 길이 정의 (3072 비트)
 #define RSA_KEY_BITS 3072
 // 소수 p, q의 비트 길이 (키 길이의 절반)
 #define RSA_PRIME_BITS 128 // (RSA_KEY_BITS / 2)
-// 큰 수 저장을 위한 배열 크기 (32비트 정수 기준)
-#define BIGNUM_ARRAY_SIZE ((RSA_KEY_BITS / 32) + 1)
 // 밀러-라빈 테스트 반복 횟수
 #define MILLER_RABIN_ROUNDS 64
-
-typedef struct {
-    uint32_t limbs[BIGNUM_ARRAY_SIZE];
-    int size;
-} Bignum; // 큰 수
-
 
 typedef struct {
     Bignum n; // Modulus
@@ -37,36 +27,7 @@ typedef struct {
 
 
 // =============================================================================
-// ## 1. 큰 수 연산 모듈 (담당: 김나현) 파일: bignum.c
-// =============================================================================
-
-// Bignum 초기화, 복사, 해제 함수
-void bignum_init(Bignum* bn);
-void bignum_copy(Bignum* dest, const Bignum* src);
-
-// 문자열과 Bignum 간 변환 함수 (16진수 권장)
-int bignum_from_hex(Bignum* bn, const char* hex_str);
-char* bignum_to_hex(const Bignum* bn);
-
-// Bignum 비교 함수 (a > b -> 1, a < b -> -1, a == b -> 0)
-int bignum_compare(const Bignum* a, const Bignum* b);
-
-// 기본 사칙연산
-void bignum_add(Bignum* result, const Bignum* a, const Bignum* b);
-void bignum_subtract(Bignum* result, const Bignum* a, const Bignum* b);
-void bignum_multiply(Bignum* result, const Bignum* a, const Bignum* b);
-void bignum_divide(Bignum* quotient, Bignum* remainder, const Bignum* a, const Bignum* b);
-
-// 모듈러 거듭제곱 (RSA의 핵심 연산)
-// result = base^exp mod modulus
-void bignum_mod_exp(Bignum* result, const Bignum* base, const Bignum* exp, const Bignum* modulus);
-
-void bn_mod_mul(Bignum* r, const Bignum* a, const Bignum* b, const Bignum* m);
-void bignum_mod(Bignum* result, const Bignum* a, const Bignum* m);
-
-
-// =============================================================================
-// ## 2. 안전한 난수 생성기 (담당: 정태진) 파일: random.c
+// ## 2. 안전한 난수 생성기 (담당: 정태진, 김주영) 파일: random.c
 // =============================================================================
 
 /**
@@ -77,7 +38,7 @@ void bignum_mod(Bignum* result, const Bignum* a, const Bignum* m);
 int generate_secure_random(unsigned char* buffer, size_t size);
 
 // =============================================================================
-// ## 3. 소수 판별법 (담당: 김성우) 파일: prime.c
+// ## 3. 소수 판별법 (담당: 김성우, 김민수) 파일: prime.c
 // =============================================================================
 
 /**

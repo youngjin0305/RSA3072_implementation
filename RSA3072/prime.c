@@ -1,7 +1,7 @@
 #include "rsa.h"
 #include <stdbool.h>
 
-int is_probably_prime(const Bignum* n, int k){//k=64
+int is_probably_prime(const Bignum* n, int k) {//k=64
     bool isprime=true; // 소수판별
     const Bignum zero={.limbs={0}, .size=0};
     const Bignum one={.limbs={1}, .size=1};
@@ -14,7 +14,7 @@ int is_probably_prime(const Bignum* n, int k){//k=64
     bignum_divide(&q0, &r0, n, &two);
     if(bignum_compare(&r0, &zero)==0) return 0;
 
-    for(int i=0; i<k; i++){
+    for(int i=0; i<k; i++) {
         Bignum test_value;//n-1 값
         bignum_init(&test_value);
         bignum_subtract(&test_value,n,&one);
@@ -68,7 +68,7 @@ int is_probably_prime(const Bignum* n, int k){//k=64
         
         //3. a^d mod n = 1 or n-1 n은 소수
         bignum_mod_exp(&result, &sudo_number, &d, n);
-        if(bignum_compare(&result, &one)==0 || bignum_compare(&result, &test_value)==0){
+        if(bignum_compare(&result, &one)==0 || bignum_compare(&result, &test_value)==0) {
             continue;
         }
 
